@@ -1,0 +1,33 @@
+[
+  {
+    "arguments": [
+      "/opt/gcc-16.1/bin/gcc",
+      "-std=c23",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-Werror",
+      "-Wformat=2",
+      "-Wnull-dereference",
+      "-Wduplicated-cond",
+      "-Wduplicated-branches",
+      "-Wshadow",
+      "-Wundef",
+      "-Wcast-qual",
+      "-Wconversion",
+      "-Wlogical-op",
+      "-Wdouble-promotion",
+      "-Wfloat-equal",
+      "-Wstrict-prototypes",
+      "-O2",
+      "-Iinclude",
+      "-c",
+      "-o",
+      "build/poller.o",
+      "src/poller.c"
+    ],
+    "directory": "/home/patrik/code/C/c-oci-api",
+    "file": "/home/patrik/code/C/c-oci-api/src/poller.c",
+    "output": "/home/patrik/code/C/c-oci-api/build/poller.o"
+  }
+]

@@ -1,0 +1,4 @@
+**/.cache
+**/**.o
+**/.env
+oci_sdk
