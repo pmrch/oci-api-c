@@ -11,10 +11,17 @@ STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -Wformat=2 \
                -Wdouble-promotion -Wfloat-equal -Wstrict-prototypes
 
 # Combine with standard flags and optimization
-CFLAGS = -std=c23 $(STRICT_FLAGS) -O2 -Iinclude
+CFLAGS = -std=c2x $(STRICT_FLAGS) -O2 -Iinclude
 
 # Linker flags (for libraries)
 LDFLAGS = -L/usr/local/lib -ldotenv -linih -lyyjson
+
+# Automatically find all subdirectories inside deps/ and format them as -Ideps/<lib>
+DEP_DIRS := $(wildcard deps/*/)
+DEP_INCLUDES := $(patsubst %, -I%, $(DEP_DIRS))
+
+# Append them to your CFLAGS
+CFLAGS += $(DEP_INCLUDES)
 
 # Target definition
 SRC := $(shell find src -name '*.c')
