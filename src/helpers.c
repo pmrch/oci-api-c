@@ -5,7 +5,10 @@
 #include <yyjson.h>
 
 #include "helpers.h"
+#include "auth.h"
+#include "log.h"
 #include "resources.h"
+#include "secrets.h"
 
 char* strip_quotes(char *str) {
     if (str == NULL) return NULL;
@@ -13,7 +16,7 @@ char* strip_quotes(char *str) {
     size_t len = strlen(str);
     if (len >= 2 && str[0] == '"' && str[len-1] == '"') {
         str[len-1] = '\0';
-        return str + 1;
+        memmove(str, str + 1, len - 1);  // shift left in place
     }
     
     return str;
@@ -32,8 +35,7 @@ char* load_env_var(const char *var_name) {
         maybe_ssh_key.key = key_data;
     } else {
         free(copy);
-        char *stripped = strip_quotes(strdup(value));
-        return stripped;
+        return strip_quotes(strdup(value));
     }
 
     if (maybe_ssh_key.key_type && maybe_ssh_key.key_type[0] == '"') {
@@ -59,7 +61,17 @@ char* load_env_var(const char *var_name) {
     return buf;
 }
 
-const char* build_launch_json(const char *ad, const Credential *creds, const Secrets *secrets, const Resources *res) {
+char* build_launch_json(const char *ad, const Credential *creds, const Secrets *secrets, const Resources *res) {
+    if (secrets == NULL || secrets->image_id == NULL || secrets->ssh_key == NULL || secrets->subnet_id == NULL) {
+        LOG_ERROR("Secrets was not initialized, or had missing fields!");
+        return NULL;
+    }
+
+    if (res == NULL || res->name == NULL || res->shape == NULL) {
+        LOG_ERROR("Resources was not initialized or had missing fields!");
+        return NULL;
+    }
+
     yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
     yyjson_mut_val *root = yyjson_mut_obj(doc);
     yyjson_mut_doc_set_root(doc, root);
@@ -101,8 +113,20 @@ const char* build_launch_json(const char *ad, const Credential *creds, const Sec
     yyjson_mut_obj_add_val(doc, root, "availabilityConfig", availability_config);
 
     // construct the JSON string
-    const char *json = yyjson_mut_write(doc, 0, NULL);
+    char *json = yyjson_mut_write(doc, 0, NULL);
     yyjson_mut_doc_free(doc);
 
     return json;
+}
+
+Intervals setup_intervals(const long poll_secs, const double ad_secs) {
+    Intervals intervals = {0};
+
+    intervals.ad_interval.tv_sec = 0;
+    intervals.ad_interval.tv_nsec = (long)(1e9 * ad_secs);
+
+    intervals.poll_interval.tv_sec = poll_secs;
+    intervals.poll_interval.tv_nsec = 0;
+
+    return intervals;
 }

@@ -13,7 +13,8 @@ typedef struct {
     Timestamp* expires_in;
 } Credential;
 
-int load_creds_from_config(Credential *credentials, const char *str);
+Credential* load_creds_from_config(const char *str);
 bool is_valid_credential(Credential *credentials);
+void free_credentials(Credential *credentials);
 
 #endif

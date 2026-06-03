@@ -1,0 +1,20 @@
+{
+    "config": {
+        "region": "eu-frankfurt-1",
+        "availability_domains": [
+            "fZvm:EU-FRANKFURT-1-AD-1",
+            "fZvm:EU-FRANKFURT-1-AD-2",
+            "fZvm:EU-FRANKFURT-1-AD-3"
+        ]
+    },
+    "resources": {
+        "name": "ampere-c-instance",
+        "shape": "VM.Standard.A1.Flex",
+        "ocpus": 2,
+        "memory_gb": 12
+    },
+    "behavior": {
+        "poll_interval_secs": 45,
+        "ad_interval_secs": 0.334
+    }
+}

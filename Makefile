@@ -11,10 +11,10 @@ STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -Wformat=2 \
                -Wdouble-promotion -Wfloat-equal -Wstrict-prototypes
 
 # Combine with standard flags and optimization
-CFLAGS = -std=c2x $(STRICT_FLAGS) -O2 -Iinclude
+CFLAGS = -g -std=c23 $(STRICT_FLAGS) -march=native -O3 -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L
 
 # Linker flags (for libraries)
-LDFLAGS = -L/usr/local/lib -ldotenv -linih -lyyjson
+LDFLAGS = -L/usr/local/lib -ldotenv -linih -lyyjson -lcurl -fsanitize=address
 
 # Automatically find all subdirectories inside deps/ and format them as -Ideps/<lib>
 DEP_DIRS := $(wildcard deps/*/)
@@ -24,11 +24,15 @@ DEP_INCLUDES := $(patsubst %, -I%, $(DEP_DIRS))
 CFLAGS += $(DEP_INCLUDES)
 
 # Target definition
-SRC := $(shell find src -name '*.c')
-OBJ := $(patsubst src/%.c,build/%.o,$(SRC))
-DEP := $(OBJ:.o=.d)
+SRC_SRC := $(shell find src -name '*.c')
+DEP_SRC := deps/c-rs-std/io.c
 
+OBJ := $(patsubst src/%.c,build/%.o,$(SRC_SRC))
+OBJ += build/deps/c-rs-std/io.o
+	
+DEP := $(OBJ:.o=.d)
 TARGET = oci_sdk
+
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) $(LDFLAGS) -o $@
 
@@ -39,17 +43,20 @@ build/%.o: src/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# 4. Rule to compile dependency files
+build/deps/c-rs-std/%.o: deps/c-rs-std/%.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 clean:
+	rm -f $(TARGET)
+	rm -rf compile_commands.json
 	rm -rf build
 
-fclean: clean
-	rm -f $(TARGET)
+all: compile_commands 
 
-re: fclean $(TARGET)
-
-.PHONY: clean fclean re
-
-.PHONY: compile_commands
+.PHONY: clean
+.PHONY: compile_commands $(TARGET)
 compile_commands:
 	bear -- make
 

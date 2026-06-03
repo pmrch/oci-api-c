@@ -1,0 +1,15 @@
+# Global settings
+CompileFlags:
+  Remove:
+    - -Wduplicated-cond
+    - -Wduplicated-branches
+    - -Wlogical-op
+    - -Wstrict-prototypes
+    - -Werror               # ← Very important
+    - -Werror=*
+
+  Add:
+    - -Wno-unknown-warning-option
+    - -Wno-error            # Treat all warnings as warnings again
+    - -ferror-limit=0       # Disable error limit completely
+

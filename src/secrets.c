@@ -24,10 +24,11 @@ int new_secrets(Secrets *secrets, const char *image_id, const char *subnet_id, c
     return 0;
 }
 
-int new_secrets_from_env(Secrets *secrets) {
+Secrets* new_secrets_from_env() {
+    Secrets *secrets = calloc(1, sizeof(Secrets));
     if (secrets == NULL) {
-        LOG_ERROR("Failed to create new secrets, passed a NULL reference of Secrets!");
-        return -1;
+        LOG_ERROR("Failed to allocate Secrets!");
+        return NULL;
     }
 
     char *image_id = load_env_var("IMAGE_OCID");
@@ -39,8 +40,10 @@ int new_secrets_from_env(Secrets *secrets) {
         free(subnet_id);
         free(ssh_key);
 
+        free_secrets(secrets);
+        free(secrets);
         LOG_ERROR("Failed to read environment variables! (IMAGE_OCID, SUBNET_OCID, SSH_PUBLIC_KEY)");
-        return -1;
+        return NULL;
     }
 
     secrets->extras = NULL;
@@ -48,5 +51,12 @@ int new_secrets_from_env(Secrets *secrets) {
     secrets->subnet_id = subnet_id;
     secrets->ssh_key = ssh_key;
 
-    return 0;
+    return secrets;
+}
+
+void free_secrets(Secrets *secrets) {
+    free(secrets->extras);
+    free(secrets->image_id);
+    free(secrets->ssh_key);
+    free(secrets->subnet_id);
 }

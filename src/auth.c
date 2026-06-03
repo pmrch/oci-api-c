@@ -15,6 +15,24 @@
 
 #define GET_HOME_PATH() (getenv("USERPROFILE") ? getenv("USERPROFILE") : getenv("HOME"))
 
+// Add this macro or a helper function at the top of src/auth.c
+#define SAFE_REPLACE(ptr, val) do { \
+    if (ptr) { \
+        free(ptr); \
+        (ptr) = NULL; \
+    } \
+    (ptr) = strdup(val); \
+} while (0)
+
+void free_credentials(Credential *credentials) {
+    free(credentials->fingerprint);
+    free(credentials->expires_in);
+    free(credentials->key_file);
+    free(credentials->tenancy);
+    free(credentials->region);
+    free(credentials->user);
+}
+
 int verify_path(const char *given, char *dest, const size_t dest_size) {
     // If there was a given path, copy it to final path
     if (given != NULL) {
@@ -54,32 +72,48 @@ static int handler(void *creds, const char *section, const char *name, const cha
     Credential *credentials = (Credential*)creds;
 
     #define MATCH_FIELD(s, n) strcmp(section, s) == 0 && strcmp(name, n) == 0
-    if (MATCH_FIELD("DEFAULT", "user")) { credentials->user = strdup(value); }
-    else if (MATCH_FIELD("DEFAULT", "fingerprint")) { credentials->fingerprint = strdup(value); }
-    else if (MATCH_FIELD("DEFAULT", "tenancy")) { credentials->tenancy = strdup(value); }
-    else if (MATCH_FIELD("DEFAULT", "region")) { credentials->region = strdup(value); }
+
+    if (MATCH_FIELD("DEFAULT", "user"))             SAFE_REPLACE(credentials->user, value);
+    else if (MATCH_FIELD("DEFAULT", "fingerprint")) SAFE_REPLACE(credentials->fingerprint, value);
+    else if (MATCH_FIELD("DEFAULT", "tenancy"))     SAFE_REPLACE(credentials->tenancy, value);
+    else if (MATCH_FIELD("DEFAULT", "region"))      SAFE_REPLACE(credentials->region, value);
     else if (MATCH_FIELD("DEFAULT", "key_file")) {
+        // Handle your logic for key_file, ensuring you call free() on the old one first
+        if (credentials->key_file) { free(credentials->key_file); }
+        
         if (value[0] == '~') {
-            const char *home_path = GET_HOME_PATH();
-            size_t new_len = strlen(home_path) + strlen(value + 1) + 1;
-            char final_path[new_len];
-
-            snprintf(final_path, new_len, "%s%s", home_path, value + 1);
-            credentials->key_file = strdup(final_path);
-        } else { credentials->key_file = strdup(value); }
-    } else { 
-        return 0;  /* unknown section/name, error */
+            const char *home = GET_HOME_PATH();
+            char *path = malloc(strlen(home) + strlen(value)); // simplified size
+            sprintf(path, "%s%s", home, value + 1);
+            credentials->key_file = path;
+        } else {
+            credentials->key_file = strdup(value);
+        }
+    } else {
+        return 0;
     }
-
     return 1;
 }
 
-int load_creds_from_config(Credential *credentials, const char *str) {    
+bool credentials_any_null(const Credential *credentials) {
+    return  credentials->fingerprint == NULL || credentials->key_file == NULL
+        || credentials->region == NULL || credentials->tenancy == NULL;
+}
+
+Credential* load_creds_from_config(const char *str) {    
+    Credential *credentials = calloc(1, sizeof(Credential));
+    if (credentials == NULL) {
+        LOG_ERROR("Credentials failed to be allocated!");
+        return NULL;
+    }
+
     char sure_path[50];
     int verified = verify_path(str, sure_path, 50);
     if (verified != 0) {
         LOG_ERROR("Failed to verify config path!");
-        return verified;
+        free_credentials(credentials);
+        free(credentials);
+        return NULL;
     }
 
     size_t final_size = sizeof(sure_path) + sizeof("/config");
@@ -89,10 +123,12 @@ int load_creds_from_config(Credential *credentials, const char *str) {
     int ini_parse_result = ini_parse(filename, handler, credentials);
     if (ini_parse_result < 0) {
         LOG_ERROR("Can't load %s\n", filename);
-        return ini_parse_result;
+        free_credentials(credentials);
+        free(credentials);
+        return NULL;
     }
 
-    return 0;
+    return credentials;
 }
 
 bool is_valid_credential(Credential *credentials) {

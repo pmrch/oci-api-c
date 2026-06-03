@@ -17,6 +17,7 @@ typedef struct {
 } Secrets;
 
 int new_secrets(Secrets *secrets, const char *image_id, const char *subnet_id, const char *ssh_key, ExtraMap *extra);
-int new_secrets_from_env(Secrets *secrets);
+Secrets* new_secrets_from_env();
+void free_secrets(Secrets *secrets);
 
 #endif
