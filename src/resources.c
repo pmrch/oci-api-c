@@ -44,7 +44,7 @@ static Config *construct_config(yyjson_val *config) {
         while ((val = yyjson_arr_iter_next(&iter))) {
             const char *reading = yyjson_get_str(val);
             if (!reading || iter_index > 2) {
-                printf("End of iteration!");
+                LOG_DEBUG("End of iteration!");
                 break;
             }
 

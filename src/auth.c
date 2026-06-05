@@ -31,6 +31,7 @@ void free_credentials(Credential *credentials) {
     free(credentials->tenancy);
     free(credentials->region);
     free(credentials->user);
+    free(credentials);
 }
 
 int verify_path(const char *given, char *dest, const size_t dest_size) {

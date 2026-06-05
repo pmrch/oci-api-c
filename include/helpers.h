@@ -3,9 +3,7 @@
 
 #include <time.h>
 
-#include "auth.h"
-#include "resources.h"
-#include "secrets.h"
+#include "app_context.h"
 
 typedef struct {
     char* key_type;
@@ -17,8 +15,17 @@ typedef struct {
     struct timespec ad_interval;
 } Intervals;
 
+typedef struct {
+  char *memory;
+  size_t size;
+} MemoryStruct;
+
+void to_lowercase(char *str);
+
 char* load_env_var(const char *str);
-char* build_launch_json(const char *ad, const Credential *creds, const Secrets *secrets, const Resources *res);
+char* build_launch_json(const AppContext *ctx, const char *ad);
+
 Intervals setup_intervals(const long poll_secs, const double ad_secs);
+size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp);
 
 #endif

@@ -8,7 +8,7 @@
         ]
     },
     "resources": {
-        "name": "ampere-c-instance",
+        "name": "ampere-instance",
         "shape": "VM.Standard.A1.Flex",
         "ocpus": 2,
         "memory_gb": 12
