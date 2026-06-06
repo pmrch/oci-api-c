@@ -1,0 +1,103 @@
+SUMMARY: AddressSanitizer: 975856 byte(s) leaked in 14045 allocation(s).
+=============================================================================
+// After this free
+/*
+if (ans == NULL) { 
+	LOG_ERROR("Passed in a NULL for the target of cURL callback");
+	free(data);
+	return 0; 
+}
+*/
+
+SUMMARY: AddressSanitizer: 975878 byte(s) leaked in 14045 allocation(s).
+=============================================================================
+// After adding this free
+/*
+Answer *target_ans = get_answer(data);
+if (target_ans == NULL) {
+	free(data);
+	LOG_ERROR("Failed to get answer from raw contents");
+	return 0; 
+}
+*/
+SUMMARY: AddressSanitizer: 975734 byte(s) leaked in 14043 allocation(s).
+=============================================================================
+// After this free
+/*
+free(data);
+if (target_ans->code) { ans->code = strdup(target_ans->code); }
+if (target_ans->message) { ans->message = strdup(target_ans->message); }
+*/
+SUMMARY: AddressSanitizer: 975502 byte(s) leaked in 14040 allocation(s).
+=============================================================================
+// After adding the last free
+/*
+void free_secrets(Secrets *secrets) {
+    free(secrets->extras);
+    free(secrets->image_id);
+    free(secrets->ssh_key);
+    free(secrets->subnet_id);
+    free(secrets);
+}
+*/
+SUMMARY: AddressSanitizer: 975481 byte(s) leaked in 14039 allocation(s).
+=============================================================================
+// After making free_client free the header name too
+SUMMARY: AddressSanitizer: 975470 byte(s) leaked in 14039 allocation(s).
+=============================================================================
+// After free_app_context
+/*
+HttpClient *http_client = create_client();
+if (http_client == NULL) {
+	free_app_context(ctx);
+	LOG_ERROR("Failed to create cURL HTTP client!\n");
+	return -1;
+}
+*/
+// and the free_client and free_app_context here
+/*
+if (client_defaults_set != 0) {
+	LOG_ERROR("Failed to set client defaults!");
+	free_app_context(ctx);
+	free_client(http_client);
+	return client_defaults_set;
+}
+*/
+// and the free_client
+/*
+if (json == NULL) {
+	free_client(http_client);
+	free_app_context(ctx);
+	return -1;
+}
+*/
+SUMMARY: AddressSanitizer: 975470 byte(s) leaked in 14039 allocation(s).
+=============================================================================
+// After freeing the http_client at the end of main
+SUMMARY: AddressSanitizer: 25960 byte(s) leaked in 230 allocation(s).
+=============================================================================
+// After freeing at
+/*
+EVP_DigestSignUpdate(ctx, str_to_sign, strlen(str_to_sign));
+free(str_to_sign); 
+*/
+SUMMARY: AddressSanitizer: 25949 byte(s) leaked in 230 allocation(s).
+=============================================================================
+// After removing headers free from free_signing_req()
+SUMMARY: AddressSanitizer: 25630 byte(s) leaked in 218 allocation(s).
+=============================================================================
+// After free-ing ans.code and ands.message in the main loop
+SUMMARY: AddressSanitizer: 25511 byte(s) leaked in 212 allocation(s).
+=============================================================================
+// After freeing content_length_parsed in add_headers_with_body after use
+SUMMARY: AddressSanitizer: 25496 byte(s) leaked in 209 allocation(s).
+=============================================================================
+// After making free_resource_config() free itself too
+SUMMARY: AddressSanitizer: 25472 byte(s) leaked in 208 allocation(s).
+
+// NONE REMAINING
+// After
+/*
+if (ctx) EVP_MD_CTX_free(ctx);
+if (private_key) EVP_PKEY_free(private_key);
+*/

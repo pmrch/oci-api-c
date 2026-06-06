@@ -34,7 +34,7 @@ void free_credentials(Credential *credentials) {
     free(credentials);
 }
 
-int verify_path(const char *given, char *dest, const size_t dest_size) {
+static int verify_path(const char *given, char *dest, const size_t dest_size) {
     // If there was a given path, copy it to final path
     if (given != NULL) {
         size_t src_len = strlen(given);
@@ -96,9 +96,9 @@ static int handler(void *creds, const char *section, const char *name, const cha
     return 1;
 }
 
-bool credentials_any_null(const Credential *credentials) {
-    return  credentials->fingerprint == NULL || credentials->key_file == NULL
-        || credentials->region == NULL || credentials->tenancy == NULL;
+static bool credentials_any_null(const Credential *credentials) {
+    return credentials == NULL || credentials->user == NULL || credentials->fingerprint == NULL
+        || credentials->key_file == NULL || credentials->region == NULL || credentials->tenancy == NULL;
 }
 
 Credential* load_creds_from_config(const char *str) {    
@@ -113,19 +113,27 @@ Credential* load_creds_from_config(const char *str) {
     if (verified != 0) {
         LOG_ERROR("Failed to verify config path!");
         free_credentials(credentials);
-        free(credentials);
         return NULL;
     }
 
-    size_t final_size = sizeof(sure_path) + sizeof("/config");
-    char filename[final_size];
+    size_t final_size = strlen(sure_path) + sizeof("/config");
+    char *filename = malloc(final_size);
+    if (filename == NULL) {
+        free_credentials(credentials);
+        LOG_ERROR("Failed to allocate memory for filename!");
+        return NULL;
+    }
 
     snprintf(filename, final_size, "%s/config", sure_path);
     int ini_parse_result = ini_parse(filename, handler, credentials);
     if (ini_parse_result < 0) {
         LOG_ERROR("Can't load %s\n", filename);
         free_credentials(credentials);
-        free(credentials);
+        return NULL;
+    }
+
+    if (!is_valid_credential(credentials)) {
+        free_credentials(credentials);
         return NULL;
     }
 
@@ -133,12 +141,7 @@ Credential* load_creds_from_config(const char *str) {
 }
 
 bool is_valid_credential(Credential *credentials) {
-    bool cond = credentials == NULL || credentials->user == NULL || credentials->fingerprint == NULL
-        || credentials->key_file == NULL || credentials->region == NULL || credentials->tenancy == NULL;
-    
-    if (cond) {
-        return false;
-    }
+    if (credentials_any_null(credentials)) { return false; }
 
     // Take 120s as buffer to avoid edge cases.
     if (credentials->expires_in != NULL) {

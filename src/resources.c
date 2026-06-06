@@ -127,11 +127,20 @@ static Behaviour* construct_behaviour(yyjson_val *behaviour) {
 
 ResourceConfig* load_resources_from_config(const char *path) {
     ResourceConfig *resources = calloc(1, sizeof(ResourceConfig));
+    if (resources == NULL) {
+        LOG_ERROR("Failed to allocate memory for ResourceConfig loading config!");
+        return NULL;
+    }
 
     char pth_buf[256];
     getcwd(pth_buf, sizeof(pth_buf));
     
-    char pth_with_file[strlen(pth_buf) + sizeof("/config.json")];
+    char *pth_with_file = malloc(strlen(pth_buf) + strlen("/config.json"));
+    if (pth_with_file == NULL) {
+        LOG_ERROR("Failed to allocate memory for path with filename joined!");
+        return NULL;
+    }
+
     sprintf(pth_with_file, "%s/config.json", pth_buf);
     
     char *json_string = read_to_string(path ? path : pth_with_file);
@@ -163,8 +172,8 @@ ResourceConfig* load_resources_from_config(const char *path) {
     Resources *constructed_res = construct_resources(res);
     if (constructed_res == NULL) {
         free_resource_config(resources);
+        
         free(resources);
-
         free(config_full);
         free(json_string);
         yyjson_doc_free(doc);
@@ -174,8 +183,8 @@ ResourceConfig* load_resources_from_config(const char *path) {
 
     Behaviour *behav_full = construct_behaviour(behav);
     if (behav_full == NULL) {
-        free(config_full);  // already allocated!
-        free(constructed_res);  // already allocated!
+        free_config(config_full);  // already allocated!
+        free_resources(constructed_res);  // already allocated!
         free(json_string);
         yyjson_doc_free(doc);
         
@@ -203,6 +212,7 @@ void free_resource_config(ResourceConfig *resconf) {
     }
 
     free(resconf->behaviour);
+    free(resconf);
 }
 
 void free_resources(Resources *res) {

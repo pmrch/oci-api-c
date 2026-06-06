@@ -3,16 +3,44 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <yyjson.h>
 
 #include "helpers.h"
 #include "app_context.h"
 #include "auth.h"
 #include "log.h"
+#include "models.h"
 #include "resources.h"
 #include "secrets.h"
 
-char* strip_quotes(char *str) {
+#define LOWEST_AD_RETRY (334 * 1e6)
+#define LOWEST_POLL_RETRY 10
+#define HIGHEST_AD_RETRY (720 * 1e6)
+#define HIGHEST_POLL_RETRY 60
+
+
+static void clamp_ad_retry(double *current_interval_ns) {
+    if (*current_interval_ns > HIGHEST_AD_RETRY) {
+        *current_interval_ns = HIGHEST_AD_RETRY;
+    } else if (*current_interval_ns < LOWEST_AD_RETRY) {
+        *current_interval_ns = LOWEST_AD_RETRY;
+    }
+}
+
+static void clamp_poll_retry(double *current_interval_s) {
+    if (*current_interval_s > HIGHEST_POLL_RETRY) {
+        *current_interval_s = HIGHEST_POLL_RETRY;
+    } else if (*current_interval_s < LOWEST_POLL_RETRY) {
+        *current_interval_s = LOWEST_POLL_RETRY;
+    }
+}
+
+static double random_range(double min, double max) {
+    return min + ((double)rand() / RAND_MAX) * (max - min);
+}
+
+static char* strip_quotes(char *str) {
     if (str == NULL) return NULL;
     
     size_t len = strlen(str);
@@ -126,45 +154,82 @@ char* build_launch_json(const AppContext *ctx, const char *ad) {
     return json;
 }
 
-
-/*size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
+/// contents is what we get from the server (char *)
+/// size is always 1
+/// nmemb is size of object in bytes
+/// userp is the pointer you give CURLOPT_WRITEDATA
+size_t WriteAnswerCallback(void *contents, size_t size, size_t nmemb, void *userp) {
     size_t realsize = size * nmemb;
-    MemoryStruct *mem = (MemoryStruct *)userp;
+    Answer *ans = (Answer *)userp;
 
-    char *ptr = realloc(mem->memory, mem->size + realsize + 1);
-    if(!ptr) return 0; // out of memory!
-
-    mem->memory = ptr;
-    memcpy(&(mem->memory[mem->size]), contents, realsize);
-    mem->size += realsize;
-    mem->memory[mem->size] = 0; // Ensure null-termination
-
-    return realsize;
-}*/
-
-size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *userp) {
-    size_t realsize = size * nmemb;
-    MemoryStruct *mem = (MemoryStruct *)userp;
-
-    // 1. Free the existing memory to prevent leaks
-    free(mem->memory);
-
-    // 2. Allocate exactly enough space for the new content + null terminator
-    mem->memory = malloc(realsize + 1);
-    
-    if (mem->memory == NULL) {
-        mem->size = 0; // Reset size on failure
+    // Extract contents as string
+    char *data = malloc(realsize + 1);
+    if (data == NULL) {
+        LOG_ERROR("Server returned NULL on callback");
         return 0;      // Out of memory
     }
 
-    // 3. Copy the new data over
-    memcpy(mem->memory, contents, realsize);
-    
-    // 4. Update the tracker to reflect only the new size
-    mem->size = realsize;
-    mem->memory[mem->size] = 0; // Ensure null-termination
+    memcpy(data, contents, realsize);
+    data[realsize] = '\0';
 
+    // Convert contents into Answer
+    if (ans == NULL) { 
+        LOG_ERROR("Passed in a NULL for the target of cURL callback");
+        free(data);
+        return 0; 
+    }
+
+    Answer *target_ans = get_answer(data);
+    if (target_ans == NULL) {
+        free(data);
+        LOG_ERROR("Failed to get answer from raw contents");
+        return 0; 
+    }
+
+    free(data);
+    if (target_ans->code) { ans->code = strdup(target_ans->code); }
+    if (target_ans->message) { ans->message = strdup(target_ans->message); }
+
+    free_answer(target_ans);
     return realsize;
+}
+
+Answer* get_answer(const char *response) {
+    yyjson_doc *doc = yyjson_read(response, strlen(response), 0);
+    yyjson_val *root = yyjson_doc_get_root(doc);
+    if (root == NULL) {
+        LOG_ERROR("Response was not a valid JSON! %s", response);
+        yyjson_doc_free(doc);
+        return NULL;
+    }
+
+    yyjson_val *code = yyjson_obj_get(root, "code");
+    const char *code_str = yyjson_get_str(code);
+
+    yyjson_val *message = yyjson_obj_get(root, "message");
+    const char *message_str = yyjson_get_str(message);
+
+    Answer *ans = calloc(1, sizeof(Answer));
+    if (ans == NULL) {
+        LOG_ERROR("Failed to allocate memory for Answer in get_answer");
+        yyjson_doc_free(doc);
+        return NULL;
+    }
+
+    if (code_str == NULL) { ans->code = strdup("<NO CODE>"); }
+    else { ans->code = strdup(code_str); }
+
+    if (message_str == NULL) { ans->message = strdup("<NO MESSAGE>"); }
+    else { ans->message = strdup(message_str); }
+
+    yyjson_doc_free(doc);
+    return ans;
+}
+
+void free_answer(Answer *ans) {
+    if (ans->code) { free(ans->code); }
+    if (ans->message) { free(ans->message); }
+    free(ans);
 }
 
 Intervals setup_intervals(const long poll_secs, const double ad_secs) {
@@ -182,5 +247,49 @@ Intervals setup_intervals(const long poll_secs, const double ad_secs) {
 void to_lowercase(char *str) {
     for (int i = 0; str[i] != '\0'; i++) {
         str[i] = (char)tolower((unsigned char)str[i]);
+    }
+}
+
+void update_ad_interval(struct timespec *ts, const size_t num_429) {
+    if (num_429 >= 2) {
+        double new_rand = random_range(2.0, 2.5);
+        double new_interval = (double)ts->tv_nsec * new_rand;
+        clamp_ad_retry(&new_interval);
+
+        ts->tv_nsec = (long)new_interval;
+    } else if (num_429 >= 1) {
+        double new_rand = random_range(1.45, 1.75);
+        double new_interval = (double)ts->tv_nsec * new_rand;
+        clamp_ad_retry(&new_interval);
+
+        ts->tv_nsec = (long)new_interval;
+    } else {
+        double new_rand = random_range(0.75, 0.9);
+        double new_interval = (double)ts->tv_nsec * new_rand;
+        clamp_ad_retry(&new_interval);
+
+        ts->tv_nsec = (long)new_interval;
+    }
+}
+
+void update_poll_interval(struct timespec *ts, const size_t num_429) {
+    if (num_429 >= 2) {
+        double new_rand = random_range(1.35, 1.45);
+        double new_interval = (double)ts->tv_sec * new_rand;
+        clamp_poll_retry(&new_interval);
+
+        ts->tv_sec = (long)(new_interval);
+    } else if (num_429 >= 1) {
+        double new_rand = random_range(1.0, 1.25);
+        double new_interval = (double)ts->tv_sec * new_rand;
+        clamp_poll_retry(&new_interval);
+
+        ts->tv_sec = (long)(new_interval);
+    } else {
+        double new_rand = random_range(0.65, 0.85);
+        double new_interval = (double)ts->tv_sec * new_rand;
+        clamp_poll_retry(&new_interval);
+
+        ts->tv_sec = (long)(new_interval);
     }
 }

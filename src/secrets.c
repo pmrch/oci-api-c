@@ -41,7 +41,6 @@ Secrets* new_secrets_from_env() {
         free(ssh_key);
 
         free_secrets(secrets);
-        free(secrets);
         LOG_ERROR("Failed to read environment variables! (IMAGE_OCID, SUBNET_OCID, SSH_PUBLIC_KEY)");
         return NULL;
     }
@@ -59,4 +58,5 @@ void free_secrets(Secrets *secrets) {
     free(secrets->image_id);
     free(secrets->ssh_key);
     free(secrets->subnet_id);
+    free(secrets);
 }

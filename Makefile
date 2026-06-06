@@ -5,16 +5,19 @@ CC = gcc
 # -Werror: Turn warnings into errors
 # -Wpedantic: Reject everything that isn't ISO C
 # -Wextra: The "extra" warnings often missed by -Wall
-STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -Wformat=2 \
-               -Wnull-dereference -Wduplicated-cond -Wduplicated-branches \
-               -Wshadow -Wundef -Wcast-qual -Wconversion -Wlogical-op \
-               -Wdouble-promotion -Wfloat-equal -Wstrict-prototypes
+STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -Wuninitialized -Wmaybe-uninitialized \
+	-Wconversion -Wsign-conversion -Wcast-align -Wcast-qual -Wstrict-aliasing=2 -Wpointer-arith \
+	-Warray-bounds -Wnull-dereference -Wmissing-prototypes -Wstrict-prototypes \
+	-Wold-style-definition -Wredundant-decls -Wshadow -Wundef -Wformat=2 -Wformat-security \
+	-Wwrite-strings -Wvla -Wdouble-promotion -Wfloat-equal -Wswitch-enum -Wswitch-default \
+	-Wunused -Wunused-function -Wunused-variable -Wunused-parameter -Wduplicated-cond \
+	-Wduplicated-branches -Wlogical-op -Wno-padded -Wno-declaration-after-statement
 
 # Combine with standard flags and optimization
-CFLAGS = -g -std=c23 $(STRICT_FLAGS) -O0 -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L -fsanitize=address
+CFLAGS = -std=c23 $(STRICT_FLAGS) -O3 -march=native -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L -flto -ffast-math #-fsanitize=address
 
 # Linker flags (for libraries)
-LDFLAGS = -L/usr/local/lib -lsodium -ldotenv -linih -lyyjson -lcurl -lm -lssl -lcrypto -fsanitize=address 
+LDFLAGS = -L/usr/local/lib -lsodium -ldotenv -linih -lyyjson -lcurl -lm -lssl -lcrypto -ffast-math -flto #-fsanitize=address 
 
 # Automatically find all subdirectories inside deps/ and format them as -Ideps/<lib>
 DEP_DIRS := $(wildcard deps/*/)
