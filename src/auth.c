@@ -132,6 +132,7 @@ Credential* load_creds_from_config(const char *str) {
         return NULL;
     }
 
+    free(filename);
     if (!is_valid_credential(credentials)) {
         free_credentials(credentials);
         return NULL;

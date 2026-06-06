@@ -26,6 +26,7 @@ const char* fmt_method(const HttpMethod method) {
 
 void free_client(HttpClient *client) {
     if (client->handle) { curl_easy_cleanup(client->handle); }
+    if (client->url) { free(client->url); }
     if (client->headers) { 
         for (size_t i = 0; i < client->header_count; i++) {
             // only free values that were strdup'd, not string literals
@@ -60,7 +61,7 @@ HttpClient* create_client() {
 }
 
 int setup_client_defaults(HttpClient *client, const char *url) {
-    client->url = url;
+    client->url = strdup(url);
     curl_easy_setopt(client->handle, CURLOPT_URL, url);
 
     // Setup default HTTP headers

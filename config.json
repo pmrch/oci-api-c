@@ -14,7 +14,7 @@
         "memory_gb": 12
     },
     "behavior": {
-        "poll_interval_secs": 45,
+        "poll_interval_secs": 15,
         "ad_interval_secs": 0.5
     }
 }

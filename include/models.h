@@ -16,7 +16,7 @@ typedef struct {
 
 typedef struct {
     CURL* handle;
-    const char* url;
+    char* url;
     HttpHeader* headers;
     HttpMethod method;
     size_t header_count;

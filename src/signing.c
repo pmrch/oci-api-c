@@ -97,7 +97,7 @@ static char* string_to_sign(HttpClient *client, const bool is_post, SigningReque
 
     // Get HTTP formatted time first
     char date_buf[34];
-    timestamp_format_http_date(ts, date_buf, sizeof(date_buf));
+    timestamp_format_http_date(ts, date_buf, 34);
     LOG_DEBUG("Given date buffer of size %zu, read %zu", sizeof(date_buf), strlen(date_buf) + 1);
 
     char date[40];
@@ -143,19 +143,26 @@ static char* string_to_sign(HttpClient *client, const bool is_post, SigningReque
         if (xcs && ct && cl) {
             sprintf(post_headers, "x-content-sha256: %s\ncontent-type: %s\ncontent-length: %s", xcs, ct, cl);
             
-            size_t all_header_size = strlen(date) + strlen(method_path) + strlen(host_buf) + strlen(post_headers) + 1;
+            size_t all_header_size = strlen(date) + strlen(method_path) + strlen(host_buf) + strlen(post_headers) + 4;
             char *headers_all = malloc(all_header_size);
             if (headers_all == NULL) {
                 LOG_ERROR("Failed to allocate memory for full header size");
+                free(method_path);
                 free(post_headers);
                 return NULL;
             }
 
-            sprintf(headers_all, "%s\n%s\n%s\n%s", date, method_path, host_buf, post_headers);
+            snprintf(headers_all, all_header_size, "%s\n%s\n%s\n%s", date, method_path, host_buf, post_headers);
+            free(host_buf);
             free(post_headers);
-            return strdup(headers_all);
+            free(method_path);
+
+            char *result = strdup(headers_all);
+            free(headers_all);
+            return result;
         } else {
             free(post_headers);
+            free(method_path);
             LOG_ERROR("Failed to get required headers!");
             return NULL;
         }
@@ -166,10 +173,14 @@ static char* string_to_sign(HttpClient *client, const bool is_post, SigningReque
     if (final_headers == NULL) {
         LOG_ERROR("Failed to allocate final headers!");
         free(post_headers);
+        free(method_path);
+        free(host_buf);
         return NULL;
     }
 
     snprintf(final_headers, all_header_size, "%s\n%s\n%s", date, method_path, host_buf);
+    free(method_path);
+    free(host_buf);
     return final_headers;
 }
 

@@ -135,14 +135,9 @@ ResourceConfig* load_resources_from_config(const char *path) {
     char pth_buf[256];
     getcwd(pth_buf, sizeof(pth_buf));
     
-    char *pth_with_file = malloc(strlen(pth_buf) + strlen("/config.json"));
-    if (pth_with_file == NULL) {
-        LOG_ERROR("Failed to allocate memory for path with filename joined!");
-        return NULL;
-    }
-
+    char pth_with_file[256 + sizeof("/config.json") + 1];
     sprintf(pth_with_file, "%s/config.json", pth_buf);
-    
+
     char *json_string = read_to_string(path ? path : pth_with_file);
     if (json_string == NULL) {
         free_resource_config(resources);

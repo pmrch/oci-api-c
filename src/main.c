@@ -75,6 +75,8 @@ int main() {
 
     // Set the URL (this is glboal)
     int client_defaults_set = setup_client_defaults(http_client, url);
+    free(url);
+    
     if (client_defaults_set != 0) {
         LOG_ERROR("Failed to set client defaults!");
         free_app_context(ctx);

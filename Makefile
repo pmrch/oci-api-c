@@ -11,13 +11,13 @@ STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -Wuninitialized -Wmaybe-uninitia
 	-Wold-style-definition -Wredundant-decls -Wshadow -Wundef -Wformat=2 -Wformat-security \
 	-Wwrite-strings -Wvla -Wdouble-promotion -Wfloat-equal -Wswitch-enum -Wswitch-default \
 	-Wunused -Wunused-function -Wunused-variable -Wunused-parameter -Wduplicated-cond \
-	-Wduplicated-branches -Wlogical-op -Wno-padded -Wno-declaration-after-statement
+	-Wduplicated-branches -Wlogical-op -Wno-padded -Wno-declaration-after-statement 
 
 # Combine with standard flags and optimization
-CFLAGS = -std=c23 $(STRICT_FLAGS) -O3 -march=native -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L -flto -ffast-math #-fsanitize=address
+CFLAGS = -g -O0 -std=c23 $(STRICT_FLAGS) -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L -flto -ffast-math -fsanitize=address
 
 # Linker flags (for libraries)
-LDFLAGS = -L/usr/local/lib -lsodium -ldotenv -linih -lyyjson -lcurl -lm -lssl -lcrypto -ffast-math -flto #-fsanitize=address 
+LDFLAGS = -L/usr/local/lib -lsodium -ldotenv -linih -lyyjson -lcurl -lm -lssl -lcrypto -ffast-math -flto -fsanitize=address 
 
 # Automatically find all subdirectories inside deps/ and format them as -Ideps/<lib>
 DEP_DIRS := $(wildcard deps/*/)
