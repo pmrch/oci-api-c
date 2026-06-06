@@ -70,3 +70,24 @@ int setup_client_defaults(HttpClient *client, const char *url) {
 
     return 0;
 }
+
+void setup_and_send_webhook(const char *url) {
+    CURL *handle = curl_easy_init();
+    if (handle == NULL) {
+        LOG_ERROR("Failed to create cURL handle for webhook");
+        return;
+    }
+
+    const char *message = "{ \"content\": \"Successfully created the ARM instance\" }";
+    curl_easy_setopt(handle, CURLOPT_URL, url);
+    curl_easy_setopt(handle, CURLOPT_POSTFIELDS, message);
+
+    if (curl_easy_perform(handle) == 0) {
+        long http_code = 0;
+        curl_easy_getinfo(handle, CURLINFO_RESPONSE_CODE, &http_code);
+        
+        if (http_code != 200) { LOG_ERROR("Failed to transport message to webhook");}
+    }
+
+    curl_easy_cleanup(handle);
+}

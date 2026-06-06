@@ -84,8 +84,7 @@ int main() {
         return client_defaults_set;
     }
 
-    size_t oo = 0;
-    while (should_be_running && oo <= 2) {
+    while (should_be_running) {
         size_t num_429 = 0;
         for (unsigned int i = 0; i <= 2; i++) {
             // Get the JSON
@@ -93,11 +92,15 @@ int main() {
             char *json = build_launch_json(ctx, ad);
             if (json == NULL) {
                 free_client(http_client);
+                curl_easy_cleanup(http_client->handle);
                 free_app_context(ctx);
                 return -1;
             }
 
-            //format_with_jq(json);
+            #ifdef PRINT_JSON_PRETTY
+            format_with_jq(json);
+            #endif
+
             curl_easy_setopt(http_client->handle, CURLOPT_POSTFIELDS, json);
             int signed_req = sign_request(http_client, json, ctx->credentials);
             if (signed_req != 0) { 
@@ -112,6 +115,8 @@ int main() {
             Answer ans = {0};
             curl_easy_setopt(http_client->handle, CURLOPT_WRITEFUNCTION, WriteAnswerCallback);
             curl_easy_setopt(http_client->handle, CURLOPT_WRITEDATA, &ans);
+
+            nanosleep(&intervals.ad_interval, NULL);
             curl_easy_perform(http_client->handle);
 
             long http_code;
@@ -123,9 +128,15 @@ int main() {
             free(ans.code);
             free(ans.message);
 
-            nanosleep(&intervals.ad_interval, NULL);
             curl_slist_free_all(headers);
             free(json);
+
+            if (http_code == 200) {
+                char *wh_url = getenv("WEBHOOK_URL");
+                if (wh_url) { setup_and_send_webhook(wh_url); }
+                should_be_running = false; 
+                break; 
+            }
         }
 
         update_ad_interval(&intervals.ad_interval, num_429);
@@ -135,12 +146,11 @@ int main() {
             intervals.poll_interval.tv_sec, ((double)intervals.ad_interval.tv_nsec / 1e6)
         );
 
-        oo++;
         nanosleep(&intervals.poll_interval, NULL);
     }
 
     free_app_context(ctx);
     free_client(http_client);
-    curl_easy_cleanup(http_client);
+    curl_easy_cleanup(http_client->handle);
     return 0;
 }

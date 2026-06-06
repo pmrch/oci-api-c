@@ -14,10 +14,10 @@ STRICT_FLAGS = -Wall -Wextra -Wpedantic -Werror -Wuninitialized -Wmaybe-uninitia
 	-Wduplicated-branches -Wlogical-op -Wno-padded -Wno-declaration-after-statement 
 
 # Combine with standard flags and optimization
-CFLAGS = -g -O0 -std=c23 $(STRICT_FLAGS) -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L -flto -ffast-math -fsanitize=address
+CFLAGS = -std=c23 $(STRICT_FLAGS) -Iinclude -MMD -MP -D_POSIX_C_SOURCE=199309L -flto -ffast-math -O3 -march=native
 
 # Linker flags (for libraries)
-LDFLAGS = -L/usr/local/lib -lsodium -ldotenv -linih -lyyjson -lcurl -lm -lssl -lcrypto -ffast-math -flto -fsanitize=address 
+LDFLAGS = -L/usr/local/lib -lsodium -ldotenv -linih -lyyjson -lcurl -lm -lssl -lcrypto -ffast-math -flto #-fsanitize=address 
 
 # Automatically find all subdirectories inside deps/ and format them as -Ideps/<lib>
 DEP_DIRS := $(wildcard deps/*/)
